@@ -2,7 +2,6 @@ package claude
 
 import (
 	"context"
-	"os"
 )
 
 // MessageStream represents a stream of messages
@@ -101,50 +100,35 @@ func (s *stringPrompt) Next(ctx context.Context) (map[string]any, error) {
 //	    // Process messages...
 //	}
 func Query(ctx context.Context, prompt any, options *Options) (<-chan MessageResult, error) {
-	if options == nil {
-		options = NewOptions()
-	}
-
-	os.Setenv("CLAUDE_CODE_ENTRYPOINT", "sdk-go")
-
-	// Convert prompt to MessageStream if it's a string
-	var stream MessageStream
-	switch p := prompt.(type) {
-	case string:
-		stream = &stringPrompt{prompt: p}
-	case MessageStream:
-		stream = p
-	default:
-		return nil, &SDKError{message: "prompt must be a string or MessageStream"}
-	}
-
-	trans := newSubprocessCLITransport(stream, options)
-
-	if err := trans.connect(ctx); err != nil {
+	// Create a client with the given options
+	client := NewClient(options)
+	
+	// Connect with the prompt
+	if err := client.Connect(ctx, prompt); err != nil {
 		return nil, err
 	}
-
+	
+	// Create output channel
 	out := make(chan MessageResult)
+	
+	// Start goroutine to receive messages and auto-disconnect when done
 	go func() {
 		defer close(out)
-		defer func() {
-			_ = trans.disconnect()
-		}()
-
-		msgChan := trans.receiveMessages(ctx)
-		for data := range msgChan {
-			if data.err != nil {
-				out <- MessageResult{Error: data.err}
+		defer client.Disconnect()
+		
+		// Receive all messages until completion
+		for msg := range client.ReceiveMessages(ctx) {
+			out <- msg
+			
+			// If there's an error or we received a result message, we're done
+			if msg.Error != nil {
 				return
 			}
-			msg, err := parseMessage(data.data)
-			if err != nil {
-				out <- MessageResult{Error: err}
+			if _, isResult := msg.Message.(*ResultMessage); isResult {
 				return
 			}
-			out <- MessageResult{Message: msg}
 		}
 	}()
-
+	
 	return out, nil
 }

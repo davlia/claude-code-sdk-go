@@ -4,6 +4,8 @@ import (
 	"context"
 	"os"
 	"sync"
+	
+	"github.com/davlia/claude-code-sdk-go/internal/transport"
 )
 
 // Client provides bidirectional, interactive conversations with Claude Code.
@@ -58,7 +60,7 @@ import (
 //	err = client.Query(ctx, "What's 15% of 80?", "default")
 type Client struct {
 	options   *Options
-	transport cliTransport
+	transport transport.Transport
 	mu        sync.Mutex
 }
 
@@ -97,8 +99,30 @@ func (c *Client) Connect(ctx context.Context, prompt any) error {
 		return &SDKError{message: "prompt must be nil, a string, or MessageStream"}
 	}
 
-	trans := newSubprocessCLITransport(stream, c.options)
-	if err := trans.connect(ctx); err != nil {
+	// Convert claude.Options to transport.Options
+	transportOptions := &transport.Options{
+		Model:                    c.options.Model,
+		SystemPrompt:             c.options.SystemPrompt,
+		AppendSystemPrompt:       c.options.AppendSystemPrompt,
+		Cwd:                      c.options.Cwd,
+		AllowedTools:             c.options.AllowedTools,
+		DisallowedTools:          c.options.DisallowedTools,
+		MaxTurns:                 c.options.MaxTurns,
+		PermissionPromptToolName: c.options.PermissionPromptToolName,
+		PermissionMode:           string(c.options.PermissionMode),
+		ContinueConversation:     c.options.ContinueConversation,
+		Resume:                   c.options.Resume,
+	}
+	
+	// Convert MCPServers if present
+	if c.options.MCPServers != nil {
+		transportOptions.MCPServers = make(map[string]any)
+		for k, v := range c.options.MCPServers {
+			transportOptions.MCPServers[k] = v
+		}
+	}
+	trans := transport.NewSubprocessCLITransport(stream, transportOptions)
+	if err := trans.Connect(ctx); err != nil {
 		return err
 	}
 
@@ -123,14 +147,14 @@ func (c *Client) ReceiveMessages(ctx context.Context) <-chan MessageResult {
 	go func() {
 		defer close(out)
 
-		msgChan := transport.receiveMessages(ctx)
+		msgChan := transport.ReceiveMessages(ctx)
 		for data := range msgChan {
-			if data.err != nil {
-				out <- MessageResult{Error: data.err}
+			if data.Err != nil {
+				out <- MessageResult{Error: data.Err}
 				return
 			}
 
-			msg, err := parseMessage(data.data)
+			msg, err := parseMessage(data.Data)
 			if err != nil {
 				out <- MessageResult{Error: err}
 				return
@@ -168,7 +192,7 @@ func (c *Client) Query(ctx context.Context, prompt any, sessionID string) error 
 			"parent_tool_use_id": nil,
 			"session_id":         sessionID,
 		}
-		return transport.sendRequest(ctx, []map[string]any{message}, map[string]any{"session_id": sessionID})
+		return transport.SendRequest(ctx, []map[string]any{message}, map[string]any{"session_id": sessionID})
 
 	case MessageStream:
 		var messages []map[string]any
@@ -189,7 +213,7 @@ func (c *Client) Query(ctx context.Context, prompt any, sessionID string) error 
 		}
 
 		if len(messages) > 0 {
-			return transport.sendRequest(ctx, messages, map[string]any{"session_id": sessionID})
+			return transport.SendRequest(ctx, messages, map[string]any{"session_id": sessionID})
 		}
 		return nil
 
@@ -208,7 +232,7 @@ func (c *Client) Interrupt(ctx context.Context) error {
 		return NewCLIConnectionError("Not connected. Call Connect() first.")
 	}
 
-	return transport.interrupt(ctx)
+	return transport.Interrupt(ctx)
 }
 
 // ReceiveResponse receives messages from Claude until and including a ResultMessage.
@@ -274,7 +298,7 @@ func (c *Client) Disconnect() error {
 	defer c.mu.Unlock()
 
 	if c.transport != nil {
-		err := c.transport.disconnect()
+		err := c.transport.Disconnect()
 		c.transport = nil
 		return err
 	}

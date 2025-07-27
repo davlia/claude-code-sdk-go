@@ -25,9 +25,9 @@ bench:
 clean:
 	go clean
 	rm -f coverage.out coverage.html
-	rm -f examples/quick_start/quick_start
-	rm -f examples/interactive_client/interactive_client
-	rm -f examples/streaming_mode/streaming_mode
+	rm -f examples/quickstart/quickstart
+	rm -f examples/interactive/interactive
+	rm -f examples/streaming/streaming
 
 # Format code
 fmt:
@@ -52,16 +52,16 @@ install:
 
 # Build examples
 examples: build
-	go build -o examples/quick_start/quick_start ./examples/quick_start
-	go build -o examples/interactive_client/interactive_client ./examples/interactive_client
-	go build -o examples/streaming_mode/streaming_mode ./examples/streaming_mode
+	go build -o examples/quickstart/quickstart ./examples/quickstart
+	go build -o examples/interactive/interactive ./examples/interactive
+	go build -o examples/streaming/streaming ./examples/streaming
 
 # Run examples
 run-examples: examples
 	@echo "Running quick start example..."
-	./examples/quick_start/quick_start
+	./examples/quickstart/quickstart
 	@echo "\nStreaming mode example..."
-	./examples/streaming_mode/streaming_mode
+	./examples/streaming/streaming
 
 # Development setup
 setup:
