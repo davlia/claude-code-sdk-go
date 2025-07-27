@@ -167,6 +167,11 @@ func parseUserMessage(data map[string]any) (*UserMessage, error) {
 }
 
 func parseAssistantMessage(data map[string]any) (*AssistantMessage, error) {
+	// Check if message data is nested under "message" field
+	if msgData, ok := data["message"].(map[string]any); ok {
+		data = msgData
+	}
+	
 	contentData, ok := data["content"].([]any)
 	if !ok {
 		return nil, fmt.Errorf("invalid assistant message content")
