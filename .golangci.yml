@@ -1,0 +1,119 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+linters-settings:
+  goimports:
+    local-prefixes: github.com/davlia/claude-code-sdk-go
+  golint:
+    min-confidence: 0.8
+  gocyclo:
+    min-complexity: 15
+  govet:
+    enable:
+      - shadow
+  lll:
+    line-length: 120
+  misspell:
+    locale: US
+  gofumpt:
+    extra-rules: true
+  gocritic:
+    enabled-checks:
+      - nestingReduce
+      - unnamedResult
+      - ruleguard
+      - truncateCmp
+    disabled-checks:
+      - regexpMust
+      - ifElseChain
+  revive:
+    rules:
+      - name: blank-imports
+      - name: context-as-argument
+      - name: context-keys-type
+      - name: dot-imports
+      - name: error-return
+      - name: error-strings
+      - name: error-naming
+      - name: exported
+      - name: if-return
+      - name: increment-decrement
+      - name: var-declaration
+      - name: package-comments
+      - name: range
+      - name: receiver-naming
+      - name: time-naming
+      - name: unexported-return
+      - name: indent-error-flow
+      - name: errorf
+
+linters:
+  enable:
+    - bodyclose
+    - depguard
+    - dogsled
+    - errcheck
+    - errorlint
+    - copyloopvar
+    - gci
+    - goconst
+    - gocritic
+    - gocyclo
+    - goimports
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - lll
+    - misspell
+    - noctx
+    - nolintlint
+    - revive
+    - staticcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - whitespace
+  disable:
+    - gochecknoglobals
+    - gochecknoinits
+    - godot
+    - godox
+    - err113
+    - wrapcheck
+    - exhaustive
+    - forcetypeassert
+    - nilerr
+    - nlreturn
+    - testpackage
+    - tparallel
+    - paralleltest
+    - prealloc
+    - wsl
+
+issues:
+  exclude-dirs:
+    - examples
+  exclude-files:
+    - ".*_test\\.go$"
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - gocritic
+        - gosec
+        - errcheck
+    - path: internal/
+      linters:
+        - exported
+    - linters:
+        - stylecheck
+      text: "ST1000:"
+
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
